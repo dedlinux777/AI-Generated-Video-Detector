@@ -1,15 +1,28 @@
 # AI-Generated Video and Audio Detector
 
-A research and educational application for two independent tasks: detecting manipulated videos and detecting synthetic audio. Each mode accepts its own input independently.
+A research and educational application with exactly two input modes: multimodal
+video detection and standalone audio detection.
 
 ## Detection Workflows
 
-- **Video Detection:** OpenCV decodes an uploaded video, samples frames, converts them from BGR to RGB, resizes and normalizes them, and passes each frame to the EfficientNet-based visual encoder. Frame predictions are averaged to produce a REAL or FAKE video result.
-- **Audio Detection:** Uploaded or microphone-recorded audio is decoded, converted to mono, and passed as a raw waveform to the existing RawNet classifier for a REAL or FAKE audio result.
+- **Video Detection:** OpenCV samples full frames using the training-compatible
+  256x256 preprocessing. FFmpeg extracts the original audio stream, which is
+  converted to mono, resampled to 16 kHz, and length-normalized for RawNet.
+  Visual and audio opinions are combined with Dempster-Shafer evidence fusion.
+  Videos without a readable audio stream are rejected.
+- **Audio Detection:** Uploaded or microphone-recorded audio is decoded,
+  converted to mono, resampled to 16 kHz, and passed as a raw waveform to
+  RawNet. No spectrogram image or visual branch is used.
 
-The EfficientNet encoder is converted from `checkpoints/efficientnet.onnx` and its trained weights are loaded from `checkpoints/model.pth`. RawNet uses the audio encoder weights from the same checkpoint. The two inference workflows run independently; no audio-video synchronization analysis is performed.
+The saved `checkpoints/model.pth` was audited and contains only `rgb_encoder`
+and `spec_encoder` weights. It does **not** contain trained evidential heads or
+ETMC fusion parameters. The application converts the existing branch outputs to
+Dirichlet opinions at inference time and does not claim that missing heads were
+trained. Existing checkpoints are never overwritten.
 
-The ETMC training architecture contains visual and audio branches with fusion layers; the application loads and invokes each trained branch independently for its corresponding input mode.
+Reported opinions use canonical class order `REAL, FAKE`. The legacy visual
+branch maps `(0, 1)` to that order and the legacy RawNet branch maps `(1, 0)`;
+this must be re-verified for any newly trained checkpoint.
 
 Predictions are research results, not proof of authenticity.
 
@@ -65,7 +78,8 @@ Open the local Gradio URL shown in the terminal. The application contains **Vide
 | Path | Purpose |
 | --- | --- |
 | `app.py` | Gradio video/audio application entry point |
-| `inference_2.py` | EfficientNet frame and RawNet audio inference |
+| `inference_2.py` | Two-stream video and standalone RawNet inference |
+| `models/evidential.py` | Dirichlet opinions, uncertainty, and DS fusion |
 | `models/` | Visual encoder, RawNet, and ETMC model components |
 | `checkpoints/` | Trained model weights and EfficientNet ONNX model |
 | `audios/`, `videos/` | Sample media |
@@ -74,7 +88,10 @@ Open the local Gradio URL shown in the terminal. The application contains **Vide
 
 ## Notes
 
-- `static_ffmpeg` configures bundled FFmpeg binaries for media decoding.
+- `static_ffmpeg` configures bundled FFmpeg binaries for media decoding; video
+  inference also requires an FFmpeg executable available to the process.
+- `tests/test_evidential.py` covers opinion normalization, conflict stability,
+  and high-uncertainty fusion. Numerical tests do not establish model accuracy.
 - Do not upload private or sensitive media when using a shared deployment.
 
 ## License

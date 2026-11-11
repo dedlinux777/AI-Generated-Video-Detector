@@ -59,12 +59,14 @@ class TMC(nn.Module):
 
     def DS_Combin_two(self, alpha1, alpha2):
         # Calculate the merger of two DS evidences
+        if alpha1.shape != alpha2.shape or alpha1.shape[-1] != self.args.n_classes:
+            raise ValueError("Dempster-Shafer inputs must have matching [batch, n_classes] shapes.")
         alpha = dict()
         alpha[0], alpha[1] = alpha1, alpha2
         b, S, E, u = dict(), dict(), dict(), dict()
         for v in range(2):
-            S[v] = torch.sum(alpha[v], dim=1, keepdim=True)
-            E[v] = alpha[v] - 1
+            S[v] = torch.sum(alpha[v].clamp_min(1.0), dim=1, keepdim=True)
+            E[v] = (alpha[v] - 1).clamp_min(0.0)
             b[v] = E[v] / (S[v].expand(E[v].shape))
             u[v] = self.args.n_classes / S[v]
 
@@ -83,9 +85,12 @@ class TMC(nn.Module):
         K = bb_sum - bb_diag
 
         # calculate b^a
-        b_a = (torch.mul(b[0], b[1]) + bu + ub) / ((1 - K).view(-1, 1).expand(b[0].shape))
+        denominator = (1 - K).clamp_min(torch.finfo(K.dtype).eps)
+        b_a = (torch.mul(b[0], b[1]) + bu + ub) / denominator.view(-1, 1)
         # calculate u^a
-        u_a = torch.mul(u[0], u[1]) / ((1 - K).view(-1, 1).expand(u[0].shape))
+        u_a = (torch.mul(u[0], u[1]) / denominator.view(-1, 1)).clamp_min(
+            torch.finfo(alpha1.dtype).eps
+        )
         # test = torch.sum(b_a, dim = 1, keepdim = True) + u_a #Verify programming errors
 
         # calculate new S
@@ -153,4 +158,3 @@ class ETMC(TMC):
         depth_alpha, rgb_alpha, pseudo_alpha = depth_evidence+1, rgb_evidence+1, pseudo_evidence+1
         depth_rgb_alpha = self.DS_Combin_two(self.DS_Combin_two(depth_alpha, rgb_alpha), pseudo_alpha)
         return depth_alpha, rgb_alpha, pseudo_alpha, depth_rgb_alpha
-
