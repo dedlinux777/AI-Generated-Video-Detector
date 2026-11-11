@@ -154,8 +154,14 @@ def main(argv):
     writers = [tf.io.TFRecordWriter(shard_name) for shard_name in shard_names]
 
     if "label" in input_csv:
-        unique_labels = list(set(input_csv["label"].values))
-        l_map = {unique_labels[i]: i for i in range(len(unique_labels))}
+        labels = {str(label).strip().lower() for label in input_csv["label"].values}
+        expected_labels = {"real", "fake"}
+        if labels != expected_labels:
+            raise ValueError(
+                f"Expected exactly the labels {sorted(expected_labels)}, got {sorted(labels)}."
+            )
+        # Keep class indices stable across CSV order, shuffling, and Python runs.
+        l_map = {"real": 0, "fake": 1}
     else:
         l_map = None
 

@@ -77,7 +77,10 @@ def model_forward(i_epoch, model, args, ce_loss, batch):
     rgb_pt = torch.Tensor(rgb.numpy())
     spec = spec.numpy()
     spec_pt = torch.Tensor(spec)
-    tgt_pt = torch.Tensor(tgt.numpy())
+    labels = torch.as_tensor(tgt.numpy(), dtype=torch.long).view(-1)
+    if labels.min() < 0 or labels.max() >= args.n_classes:
+        raise ValueError("Dataset labels are outside the configured class range.")
+    tgt_pt = torch.nn.functional.one_hot(labels, num_classes=args.n_classes).float()
 
     if torch.cuda.is_available():
         rgb_pt, spec_pt, tgt_pt = rgb_pt.cuda(), spec_pt.cuda(), tgt_pt.cuda()
@@ -206,6 +209,9 @@ def train(args):
         save_checkpoint(
             {
                 "epoch": i_epoch + 1,
+                "state_dict": model.state_dict(),
+                "class_mapping": {"0": "real", "1": "fake"},
+                "architecture": "ETMC",
                 "optimizer": optimizer.state_dict(),
                 "scheduler": scheduler.state_dict(),
                 "n_no_improve": n_no_improve,

@@ -5,11 +5,12 @@ video detection and standalone audio detection.
 
 ## Detection Workflows
 
-- **Video Detection:** OpenCV samples full frames using the training-compatible
-  256x256 preprocessing. FFmpeg extracts the original audio stream, which is
+- **Video Detection:** OpenCV samples full frames and resizes them to the
+  committed EfficientNet graph's 224x224 NHWC input contract. FFmpeg extracts the original audio stream, which is
   converted to mono, resampled to 16 kHz, and length-normalized for RawNet.
-  Visual and audio opinions are combined with Dempster-Shafer evidence fusion.
-  Videos without a readable audio stream are rejected.
+  When audio is available, visual and audio opinions are combined with
+  Dempster-Shafer evidence fusion. Videos without a readable audio stream
+  produce a clearly labelled visual-only prediction.
 - **Audio Detection:** Uploaded or microphone-recorded audio is decoded,
   converted to mono, resampled to 16 kHz, and passed as a raw waveform to
   RawNet. No spectrogram image or visual branch is used.
@@ -25,6 +26,17 @@ branch maps `(0, 1)` to that order and the legacy RawNet branch maps `(1, 0)`;
 this must be re-verified for any newly trained checkpoint.
 
 Predictions are research results, not proof of authenticity.
+
+The existing encoders are not evidential heads. Visual sigmoid scores and
+RawNet log-probabilities are converted to a transparent fixed-strength
+Dirichlet baseline (strength 20) before fusion; this is not calibrated
+epistemic uncertainty. A validation study is required before changing
+abstention thresholds or claiming calibrated confidence.
+
+TFRecord generation uses the explicit persisted training mapping
+`real=0, fake=1`; future complete ETMC checkpoints save this mapping alongside
+the model state. The committed legacy encoder checkpoint remains separate and
+does not contain ETMC heads or fusion parameters.
 
 ## Requirements
 

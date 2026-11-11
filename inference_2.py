@@ -18,12 +18,20 @@ import cv2
 import numpy as np
 import torch
 
-from models.evidential import Opinion, decision, fuse_opinions, opinion_from_logits
+from models.evidential import (
+    Opinion,
+    decision,
+    fuse_opinions,
+    opinion_from_log_probabilities,
+    opinion_from_probabilities,
+)
 
 
 ROOT = Path(__file__).resolve().parent
 CHECKPOINT = ROOT / "checkpoints" / "model.pth"
-VIDEO_SIZE = 256
+# The exported EfficientNet graph has a dynamic batch and fixed 224x224 NHWC
+# input.  This is the runtime contract of the committed visual checkpoint.
+VIDEO_SIZE = 224
 AUDIO_RATE = 16_000
 AUDIO_LENGTH = 64_600
 
@@ -54,6 +62,14 @@ class ModelArgs:
 
     def __init__(self) -> None:
         self.__dict__.update(AUDIO_ARGS)
+
+
+class AudioStreamUnavailable(ValueError):
+    """The input media has no audio stream to extract."""
+
+
+class AudioExtractionError(ValueError):
+    """An audio stream exists or may exist, but extraction failed."""
 
 
 def _canonicalize_logits(logits: torch.Tensor, class_order: tuple[int, int]) -> torch.Tensor:
@@ -150,7 +166,11 @@ def load_audio(path: str | os.PathLike[str]) -> np.ndarray:
 
 
 def extract_video_audio(video_path: str | os.PathLike[str]) -> str:
-    """Extract the original audio stream and fail explicitly if it is absent."""
+    """Extract the original audio stream.
+
+    Missing streams are reported separately from codec, I/O, and FFmpeg
+    failures so callers can safely choose visual-only inference.
+    """
     output = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
     output.close()
     command = [
@@ -159,8 +179,19 @@ def extract_video_audio(video_path: str | os.PathLike[str]) -> str:
     ]
     try:
         completed = subprocess.run(command, capture_output=True, text=True, check=False)
-        if completed.returncode != 0 or not Path(output.name).stat().st_size:
-            raise ValueError("The video has no readable audio stream.")
+        if completed.returncode != 0:
+            stderr = completed.stderr.strip()
+            missing_stream = (
+                "matches no streams" in stderr.lower()
+                or "does not contain any stream" in stderr.lower()
+            )
+            if missing_stream:
+                raise AudioStreamUnavailable("The video has no readable audio stream.")
+            raise AudioExtractionError(
+                f"Audio extraction failed: {stderr or 'FFmpeg returned an error.'}"
+            )
+        if not Path(output.name).is_file() or Path(output.name).stat().st_size == 0:
+            raise AudioExtractionError("Audio extraction produced an empty file.")
         return output.name
     except Exception:
         Path(output.name).unlink(missing_ok=True)
@@ -168,7 +199,7 @@ def extract_video_audio(video_path: str | os.PathLike[str]) -> str:
 
 
 def preprocess_video(input_video: str | os.PathLike[str], n_frames: int = 8) -> list[torch.Tensor]:
-    """Sample full frames using the training-compatible 256px preprocessing."""
+    """Sample full frames using the visual checkpoint's 224px preprocessing."""
     capture = cv2.VideoCapture(str(input_video))
     frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
     if frame_count <= 0:
@@ -207,8 +238,10 @@ def _format_opinion(name: str, opinion: Opinion) -> str:
 def _predict_audio_opinion(audio: np.ndarray) -> Opinion:
     audio_model = _load_audio_model()
     with torch.inference_mode():
-        logits = audio_model(torch.from_numpy(audio).unsqueeze(0))
-    return opinion_from_logits(_canonicalize_logits(logits, AUDIO_CLASS_ORDER))
+        log_probabilities = audio_model(torch.from_numpy(audio).unsqueeze(0))
+    return opinion_from_log_probabilities(
+        _canonicalize_logits(log_probabilities, AUDIO_CLASS_ORDER)
+    )
 
 
 def deepfakes_spec_predict(input_audio: tuple[np.ndarray, int] | str) -> str:
@@ -223,22 +256,31 @@ def deepfakes_spec_predict(input_audio: tuple[np.ndarray, int] | str) -> str:
 
 
 def deepfakes_video_predict(input_video: str | None) -> str:
-    """Analyze both video streams and return the Dempster-Shafer fused result."""
+    """Analyze a video, falling back to visual-only inference when audio is absent."""
     if not input_video:
         raise ValueError("A video file is required.")
     frames = preprocess_video(input_video)
     if not frames:
         raise ValueError("No readable frames were found in the video.")
 
-    audio_path = extract_video_audio(input_video)
+    visual_model = _load_visual_model()
+    with torch.inference_mode():
+        probabilities = visual_model(torch.stack(frames))
+    visual_opinion = opinion_from_probabilities(
+        _canonicalize_logits(probabilities, VISUAL_CLASS_ORDER).mean(dim=0, keepdim=True)
+    )
+
+    try:
+        audio_path = extract_video_audio(input_video)
+    except AudioStreamUnavailable:
+        return "\n".join([
+            f"Visual result: {decision(visual_opinion)}",
+            _format_opinion("Visual opinion", visual_opinion),
+            "Audio stream unavailable. Prediction is based on visual analysis only.",
+        ])
+
     try:
         audio = load_audio(audio_path)
-        visual_model = _load_visual_model()
-        with torch.inference_mode():
-            logits = visual_model(torch.stack(frames))
-        visual_opinion = opinion_from_logits(
-            _canonicalize_logits(logits, VISUAL_CLASS_ORDER).mean(dim=0, keepdim=True)
-        )
         audio_opinion = _predict_audio_opinion(audio)
         fused_opinion = fuse_opinions(visual_opinion, audio_opinion)
         return "\n".join([
