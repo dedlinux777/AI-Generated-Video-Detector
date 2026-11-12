@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake Media Detector</title>
+    <link rel="apple-touch-icon" sizes="57x57" href="./icons/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="./icons/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="./icons/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="./icons/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="./icons/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="./icons/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="./icons/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="./icons/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="./icons/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="./icons/ms-icon-144x144.png">
+    <meta name="theme-color" content="#3498db">
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Advanced AI-powered deepfake detection for videos, images, and audio. Detect synthetic media with cutting-edge technology.">
+    <meta name="keywords" content="deepfake detection, AI, video analysis, image verification, audio authenticity, synthetic media">
+    <meta name="author" content="AI Video Detector">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Multimodal Deepfake Detector">
+    <meta property="og:description" content="Advanced AI-powered deepfake detection for videos, images, and audio">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="./icons/android-icon-192x192.png">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Multimodal Deepfake Detector">
+    <meta name="twitter:description" content="Advanced AI-powered deepfake detection for videos, images, and audio">
+    <meta name="twitter:image" content="../icons/android-icon-192x192.png">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-overlay"></div>
+            <div class="header-content">
+                <div class="header-icon">
+                    <svg class="shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <h1 class="header-title">Fake Media Detector</h1>
+                <p class="header-subtitle">Advanced AI-powered detection for deepfakes and manipulated content</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="container">
+                <div class="card">
+                    <!-- Type Selection -->
+                    <div class="section">
+                        <h2 class="section-title">
+                            <svg class="zap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/>
+                            </svg>
+                            Select Media Type
+                        </h2>
+                        <div class="type-grid">
+                            <button class="type-button active" data-type="image">
+                                <svg class="type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21,15 16,10 5,21"/>
+                                </svg>
+                                <span>Image</span>
+                            </button>
+                            <button class="type-button" data-type="video">
+                                <svg class="type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="23,7 16,12 23,17 23,7"/>
+                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                                </svg>
+                                <span>Video</span>
+                            </button>
+                            <button class="type-button" data-type="audio">
+                                <svg class="type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 18V5l12-2v13"/>
+                                    <circle cx="6" cy="18" r="3"/>
+                                    <circle cx="18" cy="16" r="3"/>
+                                </svg>
+                                <span>Audio</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- File Upload -->
+                    <div class="section">
+                        <h2 class="section-title">
+                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7,10 12,15 17,10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            Upload File
+                        </h2>
+
+                        <div class="upload-area" id="uploadArea">
+                            <input type="file" id="fileInput" class="file-input" accept="image/*">
+                            <div class="upload-content">
+                                <div class="upload-icon-container" id="uploadIconContainer">
+                                    <svg class="upload-default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7,10 12,15 17,10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                </div>
+                                <div class="upload-text" id="uploadText">
+                                    <p class="upload-main-text">Drop your image here or click to browse</p>
+                                    <p class="upload-sub-text">Supports all common image formats</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Added file preview section -->
+                        <div class="file-preview" id="filePreview" style="display: none;">
+                            <div class="preview-header">
+                                <h3 class="preview-title">File Preview</h3>
+                                <button class="remove-file-btn" id="removeFileBtn" type="button">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="preview-content" id="previewContent">
+                                <!-- Preview will be inserted here -->
+                            </div>
+                            <div class="file-details" id="fileDetails">
+                                <!-- File details will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analyze Button -->
+                    <div class="section">
+                        <button class="analyze-button" id="analyzeButton" disabled>
+                            <div class="button-content" id="buttonContent">
+                                <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                </svg>
+                                <span>Analyze Media</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="result-card" id="resultCard" style="display: none;">
+                    <div class="result-content">
+                        <div class="result-icon" id="resultIcon"></div>
+                        <div class="result-text">
+                            <h3 class="result-title">Analysis Result</h3>
+                            <p class="result-description" id="resultDescription"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Gradio Client -->
+<script type="module">
+    import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
+    window.GradioClient = Client; // ✅ official global
+  </script>
+
+    <script src="script.js"></script>
+</body>
+</html>

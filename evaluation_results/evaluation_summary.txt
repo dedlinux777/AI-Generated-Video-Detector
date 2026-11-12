@@ -1,0 +1,3 @@
+Evaluation summary
+Positive class: fake (1); negative class: real (0)
+Metrics are omitted when a valid labelled evaluation sample is unavailable.
