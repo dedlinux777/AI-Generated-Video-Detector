@@ -47,6 +47,7 @@ DEFAULT_ARCHITECTURE = {
     "nb_fc_node": 1024,
     "gru_node": 1024,
     "nb_gru_layer": 3,
+    "nb_classes": 2,
 }
 
 
@@ -84,7 +85,10 @@ def load_complete_etmc(path: str | os.PathLike[str]) -> ETMC:
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     if not isinstance(checkpoint, dict):
         raise ValueError("ETMC checkpoint must be a dictionary.")
-    required = {"state_dict", "class_mapping", "architecture", "architecture_config"}
+    required = {
+        "state_dict", "class_mapping", "architecture", "architecture_config",
+        "epoch", "best_metric",
+    }
     missing = required - checkpoint.keys()
     if missing:
         raise ValueError(
@@ -92,6 +96,10 @@ def load_complete_etmc(path: str | os.PathLike[str]) -> ETMC:
         )
     if checkpoint["architecture"] != "ETMC":
         raise ValueError(f"Unsupported checkpoint architecture: {checkpoint['architecture']!r}.")
+    if not isinstance(checkpoint["epoch"], int) or checkpoint["epoch"] < 1:
+        raise ValueError("ETMC checkpoint has an invalid epoch.")
+    if not isinstance(checkpoint["best_metric"], (int, float)) or not np.isfinite(checkpoint["best_metric"]):
+        raise ValueError("ETMC checkpoint has an invalid validation metric.")
     _validate_mapping(checkpoint["class_mapping"])
     state_dict = checkpoint["state_dict"]
     if not isinstance(state_dict, dict) or not state_dict:
@@ -129,7 +137,10 @@ class _AudioETMCBranch(nn.Module):
 @functools.lru_cache(maxsize=1)
 def _load_audio_branch() -> _AudioETMCBranch:
     checkpoint = torch.load(ETMC_CHECKPOINT, map_location="cpu")
-    required = {"state_dict", "class_mapping", "architecture", "architecture_config"}
+    required = {
+        "state_dict", "class_mapping", "architecture", "architecture_config",
+        "epoch", "best_metric",
+    }
     if not isinstance(checkpoint, dict) or not required <= checkpoint.keys():
         raise ValueError("The ETMC checkpoint is incomplete and cannot load audio independently.")
     if checkpoint["architecture"] != "ETMC":
@@ -229,8 +240,27 @@ def preprocess_video(input_video: str | os.PathLike[str], n_frames: int = 8) -> 
 def _predict_etmc_opinions(frames: list[torch.Tensor], audio: np.ndarray) -> tuple[Opinion, Opinion, Opinion, Opinion]:
     model = _load_etmc_model()
     with torch.inference_mode():
-        spec_alpha, rgb_alpha, pseudo_alpha, fused_alpha = model(
-            torch.stack(frames), torch.from_numpy(audio).unsqueeze(0).expand(len(frames), -1)
+        rgb_features = model.rgbenc(torch.stack(frames)).flatten(1)
+        spec_features = model.specenc(torch.from_numpy(audio).unsqueeze(0)).flatten(1)
+
+        spec_out = spec_features
+        for layer in model.spec_depth:
+            spec_out = layer(spec_out)
+        rgb_out = rgb_features
+        for layer in model.clf_rgb:
+            rgb_out = layer(rgb_out)
+        pseudo_out = torch.cat(
+            [rgb_features, spec_features.expand(len(frames), -1)], dim=-1
+        )
+        for layer in model.clf:
+            pseudo_out = layer(pseudo_out)
+
+        spec_alpha = torch.nn.functional.softplus(spec_out) + 1.0
+        rgb_alpha = torch.nn.functional.softplus(rgb_out) + 1.0
+        pseudo_alpha = torch.nn.functional.softplus(pseudo_out) + 1.0
+        fused_alpha = model.DS_Combin_two(
+            model.DS_Combin_two(spec_alpha.expand(len(frames), -1), rgb_alpha),
+            pseudo_alpha,
         )
     visual_alpha = rgb_alpha.mean(dim=0, keepdim=True)
     audio_opinion = opinion_from_alpha(spec_alpha.mean(dim=0, keepdim=True))

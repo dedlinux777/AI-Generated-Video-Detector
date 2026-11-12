@@ -34,6 +34,8 @@ class InferenceTests(unittest.TestCase):
                 "class_mapping": inference_2.EXPECTED_CLASS_MAPPING,
                 "architecture": "ETMC",
                 "architecture_config": inference_2.DEFAULT_ARCHITECTURE,
+                "epoch": 1,
+                "best_metric": 0.5,
             }, path)
             with patch.object(inference_2, "ETMC", return_value=fake_model):
                 loaded = inference_2.load_complete_etmc(path)
@@ -44,6 +46,23 @@ class InferenceTests(unittest.TestCase):
         for opinion in self.opinions:
             self.assertEqual(opinion.alpha.shape, (1, 2))
             self.assertEqual(opinion.expected.shape, (1, 2))
+
+    def test_video_computes_acoustic_features_once_per_video(self):
+        model = Mock()
+        model.rgbenc.return_value = torch.ones(3, 1)
+        model.specenc.return_value = torch.ones(1, 2)
+        model.spec_depth = [torch.nn.Identity()]
+        model.clf_rgb = [torch.nn.Linear(1, 2)]
+        model.clf = [torch.nn.Linear(3, 2)]
+        model.DS_Combin_two.side_effect = lambda first, second: first + second
+        with patch.object(inference_2, "_load_etmc_model", return_value=model):
+            opinions = inference_2._predict_etmc_opinions(
+                [torch.zeros(3, 256, 256)] * 3, torch.zeros(64600).numpy()
+            )
+        model.specenc.assert_called_once()
+        self.assertEqual(len(opinions), 4)
+        for opinion in opinions:
+            self.assertEqual(opinion.alpha.shape, (1, 2))
 
     def test_video_uses_trained_etmc_fusion_and_returns_all_opinions(self):
         with patch.object(inference_2, "preprocess_video", return_value=[torch.zeros(3, 256, 256)]), \
@@ -77,6 +96,8 @@ class InferenceTests(unittest.TestCase):
                 "class_mapping": {"0": "fake", "1": "real"},
                 "architecture": "ETMC",
                 "architecture_config": inference_2.DEFAULT_ARCHITECTURE,
+                "epoch": 1,
+                "best_metric": 0.5,
             }, path)
             with self.assertRaisesRegex(ValueError, "class mapping"):
                 inference_2.load_complete_etmc(path)

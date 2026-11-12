@@ -90,7 +90,6 @@ class FakeAVCelebDatasetTrain:
         shards = tf.data.Dataset.from_tensor_slices(files)
         dataset = shards.interleave(tf.data.TFRecordDataset)
         dataset = dataset.shuffle(buffer_size=100)
-
         dataset = dataset.map(_parse_function, num_parallel_calls = tf.data.AUTOTUNE)
         dataset = dataset.map(decode_train_inputs, num_parallel_calls = tf.data.AUTOTUNE)
         dataset = dataset.padded_batch(batch_size = self.args.batch_size)
@@ -112,11 +111,10 @@ class FakeAVCelebDatasetVal:
     def load_features_from_tfrec(self):
         '''Loads raw features from a tfrecord file and returns them as raw inputs'''
         ds = tf.io.matching_files(self.args.data_dir)
-        files = tf.random.shuffle(ds)
+        files = ds
 
         shards = tf.data.Dataset.from_tensor_slices(files)
         dataset = shards.interleave(tf.data.TFRecordDataset)
-        dataset = dataset.shuffle(buffer_size=100)
 
         dataset = dataset.map(_parse_function, num_parallel_calls = tf.data.AUTOTUNE)
         dataset = dataset.map(decode_inputs, num_parallel_calls = tf.data.AUTOTUNE)

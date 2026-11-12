@@ -25,6 +25,7 @@ audio_args = {
     'nb_fc_node': 1024,
     'gru_node': 1024,
     'nb_gru_layer': 3,
+    'nb_classes': 2,
 }
 
 
@@ -235,6 +236,7 @@ def train(args):
                         "rgb_feature_size", "spec_feature_size",
                         "nb_samp", "first_conv", "in_channels", "filts", "blocks",
                         "nb_fc_node", "gru_node", "nb_gru_layer",
+                        "nb_classes",
                     )
                 },
                 "optimizer": optimizer.state_dict(),
