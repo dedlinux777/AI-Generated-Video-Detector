@@ -43,6 +43,23 @@ class Opinion:
             raise ValueError("Belief and uncertainty must sum to one.")
 
 
+def opinion_from_alpha(alpha: torch.Tensor) -> Opinion:
+    """Represent model-produced Dirichlet concentrations without recalibration."""
+    alpha = torch.as_tensor(alpha, dtype=torch.float32)
+    if alpha.ndim != 2 or alpha.shape[1] < 2:
+        raise ValueError("Dirichlet concentrations must have shape [batch, classes].")
+    if not torch.isfinite(alpha).all() or (alpha < 1).any():
+        raise ValueError("Dirichlet concentrations must be finite and at least one.")
+    classes = alpha.shape[1]
+    strength = alpha.sum(dim=1, keepdim=True)
+    evidence = alpha - 1.0
+    belief = evidence.clamp_min(0.0) / strength
+    uncertainty = (classes / strength).squeeze(1)
+    expected = alpha / strength
+    entropy = -(expected * expected.clamp_min(_EPS).log()).sum(dim=1)
+    return Opinion(alpha, expected, belief, uncertainty, entropy)
+
+
 def _probability_opinion(probabilities: torch.Tensor, evidence_strength: float) -> Opinion:
     probabilities = torch.as_tensor(probabilities, dtype=torch.float32)
     if probabilities.ndim == 1:

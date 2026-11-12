@@ -31,6 +31,7 @@ def decode_inputs(video, spectrogram, label_map):
     '''Decode tensors to arrays with desired shape'''
     frame = tf.reshape(video, [10, 3, 256, 256])
     frame = frame[0] / 255 #Pick the first frame and normalize it.
+    frame = tf.transpose(frame, [2, 0, 1])
     # frame = tf.cast(frame, tf.float32)
 
     label_map = tf.expand_dims(label_map, axis = 0)

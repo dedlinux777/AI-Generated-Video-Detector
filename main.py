@@ -39,6 +39,8 @@ def get_args(parser):
     parser.add_argument("--hidden_sz", type=int, default=768)
     parser.add_argument("--img_embed_pool_type", type=str, default="avg", choices=["max", "avg"])
     parser.add_argument("--img_hidden_sz", type=int, default=1024)
+    parser.add_argument("--rgb_feature_size", type=int, default=1)
+    parser.add_argument("--spec_feature_size", type=int, default=2)
     parser.add_argument("--include_bn", type=int, default=True)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--lr_factor", type=float, default=0.3)
@@ -58,6 +60,8 @@ def get_args(parser):
     parser.add_argument("--pretrained_audio_encoder", type = bool, default=False)
     parser.add_argument("--freeze_audio_encoder", type = bool, default = True)
     parser.add_argument("--augment_dataset", type = bool, default = True)
+    parser.add_argument("--val_data_dir", type=str, default="datasets/val/*")
+    parser.add_argument("--test_data_dir", type=str, default="")
 
     for key, value in audio_args.items():
         parser.add_argument(f"--{key}", type=type(value), default=value)
@@ -98,24 +102,28 @@ def model_forward(i_epoch, model, args, ce_loss, batch):
            ce_loss(tgt_pt, rgb_alpha, args.n_classes, i_epoch, args.annealing_epoch) + \
            ce_loss(tgt_pt, pseudo_alpha, args.n_classes, i_epoch, args.annealing_epoch) + \
            ce_loss(tgt_pt, depth_rgb_alpha, args.n_classes, i_epoch, args.annealing_epoch)
-    return loss, depth_alpha, rgb_alpha, depth_rgb_alpha, tgt_pt
+    return loss, depth_alpha, rgb_alpha, pseudo_alpha, depth_rgb_alpha, tgt_pt
 
 
 
 def model_eval(i_epoch, data, model, args, criterion):
     model.eval()
     with torch.no_grad():
-        losses, depth_preds, rgb_preds, depthrgb_preds, tgts = [], [], [], [], []
+        losses, depth_preds, rgb_preds, pseudo_preds, depthrgb_preds, tgts = [], [], [], [], [], []
         for batch in tqdm(data):
-            loss, depth_alpha, rgb_alpha, depth_rgb_alpha, tgt = model_forward(i_epoch, model, args, criterion, batch)
+            loss, depth_alpha, rgb_alpha, pseudo_alpha, depth_rgb_alpha, tgt = model_forward(
+                i_epoch, model, args, criterion, batch
+            )
             losses.append(loss.item())
 
             depth_pred = depth_alpha.argmax(dim=1).cpu().detach().numpy()
             rgb_pred = rgb_alpha.argmax(dim=1).cpu().detach().numpy()
+            pseudo_pred = pseudo_alpha.argmax(dim=1).cpu().detach().numpy()
             depth_rgb_pred = depth_rgb_alpha.argmax(dim=1).cpu().detach().numpy()
 
             depth_preds.append(depth_pred)
             rgb_preds.append(rgb_pred)
+            pseudo_preds.append(pseudo_pred)
             depthrgb_preds.append(depth_rgb_pred)
             tgt = tgt.cpu().detach().numpy()
             tgts.append(tgt)
@@ -126,9 +134,11 @@ def model_eval(i_epoch, data, model, args, criterion):
     tgts = [l for sl in tgts for l in sl]
     depth_preds = [l for sl in depth_preds for l in sl]
     rgb_preds = [l for sl in rgb_preds for l in sl]
+    pseudo_preds = [l for sl in pseudo_preds for l in sl]
     depthrgb_preds = [l for sl in depthrgb_preds for l in sl]
     metrics["spec_acc"] = accuracy_score(tgts, depth_preds)
     metrics["rgb_acc"] = accuracy_score(tgts, rgb_preds)
+    metrics["pseudo_acc"] = accuracy_score(tgts, pseudo_preds)
     metrics["specrgb_acc"] = accuracy_score(tgts, depthrgb_preds)
     return metrics
 
@@ -152,7 +162,9 @@ def train(args):
     train_ds = FakeAVCelebDatasetTrain(args)
     train_ds = train_ds.load_features_from_tfrec()
 
-    val_ds = FakeAVCelebDatasetVal(args)
+    val_args = argparse.Namespace(**vars(args))
+    val_args.data_dir = args.val_data_dir
+    val_ds = FakeAVCelebDatasetVal(val_args)
     val_ds = val_ds.load_features_from_tfrec()
     
     model = ETMC(args)
@@ -171,7 +183,9 @@ def train(args):
         optimizer.zero_grad()
 
         for index, batch in tqdm(enumerate(train_ds)):
-            loss, depth_out, rgb_out, depthrgb, tgt = model_forward(i_epoch, model, args, ce_loss, batch)
+            loss, depth_out, rgb_out, pseudo_out, depthrgb, tgt = model_forward(
+                i_epoch, model, args, ce_loss, batch
+            )
             if args.gradient_accumulation_steps > 1:
                  loss = loss / args.gradient_accumulation_steps
 
@@ -212,6 +226,17 @@ def train(args):
                 "state_dict": model.state_dict(),
                 "class_mapping": {"0": "real", "1": "fake"},
                 "architecture": "ETMC",
+                "architecture_config": {
+                    key: getattr(args, key)
+                    for key in (
+                        "dropout", "hidden", "num_image_embeds", "n_classes",
+                        "device", "pretrained_image_encoder", "freeze_image_encoder",
+                        "pretrained_audio_encoder", "freeze_audio_encoder",
+                        "rgb_feature_size", "spec_feature_size",
+                        "nb_samp", "first_conv", "in_channels", "filts", "blocks",
+                        "nb_fc_node", "gru_node", "nb_gru_layer",
+                    )
+                },
                 "optimizer": optimizer.state_dict(),
                 "scheduler": scheduler.state_dict(),
                 "n_no_improve": n_no_improve,
@@ -225,18 +250,20 @@ def train(args):
             logger.info("No improvement. Breaking out of loop.")
             break
     writer.close()
-    # load_checkpoint(model, os.path.join(args.savedir, "model_best.pt"))
+    best_path = os.path.join(args.savedir, "model_best.pt")
+    if not os.path.isfile(best_path):
+        raise RuntimeError("Training finished without a best ETMC checkpoint.")
+    load_checkpoint(model, best_path)
     model.eval()
-    test_metrics = model_eval(
-        np.inf, val_ds, model, args, ce_loss
-    )
-    logger.info(
-        "{}: Loss: {:.5f} | spec_acc: {:.5f}, rgb_acc: {:.5f}, depth rgb acc: {:.5f}".format(
-            "Test", test_metrics["loss"], test_metrics["spec_acc"], test_metrics["rgb_acc"],
-            test_metrics["depthrgb_acc"]
-        )
-    )
-    log_metrics(f"Test", test_metrics, logger)
+    val_metrics = model_eval(np.inf, val_ds, model, args, ce_loss)
+    logger.info("Validation metrics after restoring best checkpoint: %s", val_metrics)
+
+    if args.test_data_dir:
+        test_args = argparse.Namespace(**vars(args))
+        test_args.data_dir = args.test_data_dir
+        test_ds = FakeAVCelebDatasetVal(test_args)
+        test_metrics = model_eval(np.inf, test_ds, model, args, ce_loss)
+        logger.info("Independent test metrics: %s", test_metrics)
 
 
 def cli_main():

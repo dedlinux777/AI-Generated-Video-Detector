@@ -38,8 +38,8 @@ class TMC(nn.Module):
         self.rgbenc = image.ImageEncoder(args)
         self.specenc = image.RawNet(args)
         
-        spec_last_size = args.img_hidden_sz * 1
-        rgb_last_size = args.img_hidden_sz * args.num_image_embeds
+        spec_last_size = args.spec_feature_size
+        rgb_last_size = args.rgb_feature_size * args.num_image_embeds
         self.spec_depth = nn.ModuleList()
         self.clf_rgb = nn.ModuleList()
 
@@ -126,7 +126,10 @@ class TMC(nn.Module):
 class ETMC(TMC):
     def __init__(self, args):
         super(ETMC, self).__init__(args)
-        last_size = args.img_hidden_sz * args.num_image_embeds + args.img_hidden_sz * args.num_image_embeds
+        last_size = (
+            args.rgb_feature_size * args.num_image_embeds
+            + args.spec_feature_size
+        )
         self.clf = nn.ModuleList()
         for hidden in args.hidden:
             self.clf.append(nn.Linear(last_size, hidden))
