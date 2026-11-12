@@ -1,7 +1,7 @@
 # Performance Evaluation Report
 
-**Status:** not completed: No labelled audio samples found. Provide --audio_csv with an explicit path/label manifest or use real/ and fake/ subdirectories.
-**Evaluation-set designation:** unknown
+**Status:** not completed: [Errno 2] No such file or directory: 'D:\\dedlinux UVCE\\7th Sem\\Major Project\\AI-Generated-Video-Detector\\datasets\\fakeavceleb_balanced_300\\manifest_audio.csv'
+**Evaluation-set designation:** independent_test
 **Positive class:** fake (1); real is negative (0).
 
 ## Methodology

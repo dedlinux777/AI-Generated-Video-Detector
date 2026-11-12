@@ -1,0 +1,56 @@
+# ==========================================
+# Python & Virtual Environments
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+.env
+
+# ==========================================
+# Model Checkpoints & Weights
+# ==========================================
+checkpoints/*.pth
+checkpoints/*.onnx
+checkpoints/*.pt
+*.h5
+
+# ==========================================
+# Datasets & Large Media Files
+# ==========================================
+datasets/
+*.zip
+*.tar.gz
+*.csv
+
+# Ignore media files but keep the folders if needed
+videos/*.mp4
+videos/*.avi
+audios/*.flac
+audios/*.wav
+images/*.jpg
+images/*.png
+
+# Allow demo text files to be tracked so the empty folders stay in Git
+!videos/demo.txt
+!audios/demo.txt
+!images/demo.txt
+!checkpoints/demo.txt
+!datasets/demo.txt
+
+# ==========================================
+# Evaluation & Test Outputs
+# ==========================================
+evaluation_results/
+gradio_tmp/
+.gradio/
+flagged/
+
+# ==========================================
+# OS Generated Files
+# ==========================================
+.DS_Store
+Thumbs.db
+desktop.ini
