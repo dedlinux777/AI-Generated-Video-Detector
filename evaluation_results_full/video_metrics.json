@@ -1,0 +1,33 @@
+{
+  "sample_count": 2000,
+  "class_distribution": {
+    "real": 1000,
+    "fake": 1000
+  },
+  "accuracy": 0.6,
+  "precision_fake": 0.8623188405797102,
+  "recall_fake_sensitivity": 0.238,
+  "specificity_real": 0.962,
+  "f1_fake": 0.3730407523510972,
+  "false_positive_rate": 0.038,
+  "false_negative_rate": 0.762,
+  "roc_auc": 0.6775089999999999,
+  "confusion_matrix": {
+    "labels": [
+      "REAL (0)",
+      "FAKE (1)"
+    ],
+    "true_negative": 962,
+    "false_positive": 38,
+    "false_negative": 762,
+    "true_positive": 238
+  },
+  "modality": "video",
+  "inference_time_total_seconds": 575.7830719999329,
+  "average_inference_time_seconds": 0.2878915359999664,
+  "wall_clock_evaluation_seconds": 756.0337953999988,
+  "skipped_count": 0,
+  "skipped_samples": [],
+  "ground_truth_column": "visual_label",
+  "model_scope": "Existing EfficientNet visual branch; three sampled frames per video"
+}

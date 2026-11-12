@@ -1,0 +1,81 @@
+{
+  "dataset_root": "D:\\dedlinux UVCE\\7th Sem\\Major Project\\AI-Generated-Video-Detector\\datasets",
+  "discovered_samples": 2000,
+  "category_distribution": {
+    "FakeVideo-FakeAudio": 500,
+    "FakeVideo-RealAudio": 500,
+    "RealVideo-FakeAudio": 500,
+    "RealVideo-RealAudio": 500
+  },
+  "device": "cpu",
+  "evaluation_scope": "full dataset folder scan; not automatically an independent test set",
+  "warning": "These are independent visual-branch and audio-branch evaluations. They are NOT fused ETMC predictions. Confirm the checkpoint's training data before describing these results as held-out test performance.",
+  "results": {
+    "video": {
+      "sample_count": 2000,
+      "class_distribution": {
+        "real": 1000,
+        "fake": 1000
+      },
+      "accuracy": 0.6,
+      "precision_fake": 0.8623188405797102,
+      "recall_fake_sensitivity": 0.238,
+      "specificity_real": 0.962,
+      "f1_fake": 0.3730407523510972,
+      "false_positive_rate": 0.038,
+      "false_negative_rate": 0.762,
+      "roc_auc": 0.6775089999999999,
+      "confusion_matrix": {
+        "labels": [
+          "REAL (0)",
+          "FAKE (1)"
+        ],
+        "true_negative": 962,
+        "false_positive": 38,
+        "false_negative": 762,
+        "true_positive": 238
+      },
+      "modality": "video",
+      "inference_time_total_seconds": 575.7830719999329,
+      "average_inference_time_seconds": 0.2878915359999664,
+      "wall_clock_evaluation_seconds": 756.0337953999988,
+      "skipped_count": 0,
+      "skipped_samples": [],
+      "ground_truth_column": "visual_label",
+      "model_scope": "Existing EfficientNet visual branch; three sampled frames per video"
+    },
+    "audio": {
+      "sample_count": 2000,
+      "class_distribution": {
+        "real": 1000,
+        "fake": 1000
+      },
+      "accuracy": 0.4625,
+      "precision_fake": 0.46600181323662737,
+      "recall_fake_sensitivity": 0.514,
+      "specificity_real": 0.411,
+      "f1_fake": 0.4888254873989539,
+      "false_positive_rate": 0.589,
+      "false_negative_rate": 0.486,
+      "roc_auc": 0.4449935,
+      "confusion_matrix": {
+        "labels": [
+          "REAL (0)",
+          "FAKE (1)"
+        ],
+        "true_negative": 411,
+        "false_positive": 589,
+        "false_negative": 486,
+        "true_positive": 514
+      },
+      "modality": "audio",
+      "inference_time_total_seconds": 799.6244090004329,
+      "average_inference_time_seconds": 0.3998122045002165,
+      "wall_clock_evaluation_seconds": 1077.0943398999952,
+      "skipped_count": 0,
+      "skipped_samples": [],
+      "ground_truth_column": "audio_label",
+      "model_scope": "Existing RawNet audio branch; embedded audio decoded to mono 16 kHz"
+    }
+  }
+}

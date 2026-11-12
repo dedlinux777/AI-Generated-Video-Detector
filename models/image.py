@@ -109,7 +109,7 @@ class RawNet(nn.Module):
                     param.requires_grad = False
 
 
-    def forward(self, x, y = None):
+    def forward_features(self, x):
 
         nb_samp = x.shape[0]
         len_seq = x.shape[1]
@@ -164,6 +164,10 @@ class RawNet(nn.Module):
         x, _ = self.gru(x)
         x = x[:,-1,:]
         x = self.fc1_gru(x)
+        return x
+
+    def forward(self, x, y = None):
+        x = self.forward_features(x)
         x = self.fc2_gru(x)
         output=self.logsoftmax(x)
       
